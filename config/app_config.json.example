@@ -1,0 +1,22 @@
+{
+    "_comment": "RK3588嵌入式智能监控显示系统 - 配置文件示例",
+    "_comment2": "复制此文件为 app_config.json 并根据实际环境修改",
+
+    "video_shm_path": "/dev/shm/video_frame_shm",
+    "face_shm_path": "/dev/shm/face_data_shm",
+    "socket_path": "/tmp/monitor_control.sock",
+    "refresh_interval_ms": 33,
+
+    "drm_device": "/dev/dri/card0",
+
+    "display": {
+        "width": 1920,
+        "height": 1080,
+        "fullscreen": true
+    },
+
+    "logging": {
+        "level": "debug",
+        "file": "/tmp/rk3588_monitor.log"
+    }
+}

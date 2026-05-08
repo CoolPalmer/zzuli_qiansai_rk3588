@@ -1,0 +1,117 @@
+#!/bin/bash
+# ============================================================================
+# RK3588嵌入式智能监控显示系统 - 启动脚本
+# ============================================================================
+# 使用方法:
+#   1. 将此文件复制为 run.sh
+#   2. 根据实际环境修改路径和参数
+#   3. chmod +x run.sh
+#   4. ./run.sh
+# ============================================================================
+
+set -e
+
+# ============================================================================
+# 配置参数（根据实际环境修改）
+# ============================================================================
+
+# 应用程序路径
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+APP_BIN="${APP_DIR}/build/rk3588_qt_monitor"
+
+# 配置文件路径
+CONFIG_DIR="${APP_DIR}/config"
+CONFIG_FILE="${CONFIG_DIR}/app_config.json"
+
+# 日志文件
+LOG_FILE="/tmp/rk3588_monitor.log"
+
+# DRM设备
+DRM_DEVICE="/dev/dri/card0"
+
+# ============================================================================
+# 环境变量设置
+# ============================================================================
+
+# Qt平台插件：使用EGLFS（无X11/Wayland桌面环境）
+export QT_QPA_PLATFORM=eglfs
+
+# EGLFS KMS集成（使用DRM/KMS直接显示）
+export QT_QPA_EGLFS_INTEGRATION=eglfs_kms
+
+# 指定DRM设备（可选，默认使用/dev/dri/card0）
+# export QT_QPA_EGLFS_KMS_CONFIG="${CONFIG_DIR}/eglfs_kms.json"
+
+# 隐藏鼠标光标（嵌入式触摸屏场景）
+export QT_QPA_EGLFS_HIDECURSOR=1
+
+# 禁用Qt内置的输入设备处理（如果使用自定义输入）
+# export QT_QPA_EGLFS_DISABLE_INPUT=1
+
+# 设置屏幕物理尺寸（单位：毫米，影响DPI计算）
+# export QT_QPA_EGLFS_PHYSICAL_WIDTH=1080
+# export QT_QPA_EGLFS_PHYSICAL_HEIGHT=1920
+
+# OpenGL ES版本
+export QT_OPENGL_ES=2
+
+# 禁用Qt日志时间戳（可选，便于日志分析）
+# export QT_MESSAGE_PATTERN="%{category}: %{message}"
+
+# 设置库搜索路径（交叉编译时可能需要）
+# export LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH}
+
+# ============================================================================
+# 前置检查
+# ============================================================================
+
+echo "============================================"
+echo " RK3588嵌入式智能监控显示系统"
+echo "============================================"
+
+# 检查可执行文件是否存在
+if [ ! -f "${APP_BIN}" ]; then
+    echo "[错误] 找不到可执行文件: ${APP_BIN}"
+    echo "请先编译项目: mkdir build && cd build && cmake .. && make"
+    exit 1
+fi
+
+# 检查DRM设备
+if [ ! -e "${DRM_DEVICE}" ]; then
+    echo "[警告] DRM设备不存在: ${DRM_DEVICE}"
+    echo "请确保已正确加载DRM驱动"
+fi
+
+# 检查共享内存目录
+if [ ! -d "/dev/shm" ]; then
+    echo "[错误] /dev/shm 不存在，请确保tmpfs已挂载"
+    exit 1
+fi
+
+# 检查当前用户是否有DRM设备访问权限
+if [ ! -r "${DRM_DEVICE}" ] 2>/dev/null; then
+    echo "[警告] 当前用户可能没有DRM设备访问权限"
+    echo "尝试: sudo usermod -aG video \$USER"
+    echo "或: sudo chmod 666 ${DRM_DEVICE}"
+fi
+
+# ============================================================================
+# 启动应用程序
+# ============================================================================
+
+echo "[信息] 应用程序路径: ${APP_BIN}"
+echo "[信息] Qt平台: ${QT_QPA_PLATFORM}"
+echo "[信息] DRM设备: ${DRM_DEVICE}"
+echo "[信息] 日志文件: ${LOG_FILE}"
+echo "============================================"
+
+# 启动应用，输出同时写入日志文件和终端
+if [ -n "${LOG_FILE}" ]; then
+    "${APP_BIN}" "$@" 2>&1 | tee "${LOG_FILE}"
+else
+    "${APP_BIN}" "$@"
+fi
+
+EXIT_CODE=$?
+echo "[信息] 应用程序退出，返回码: ${EXIT_CODE}"
+exit ${EXIT_CODE}
